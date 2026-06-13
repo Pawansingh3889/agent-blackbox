@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agent-ledger"
+version = "0.1.0"
+description = "Append-only, tamper-evident audit log for AI agent actions. On-prem, zero dependencies."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Pawan Singh Kapkoti" }]
+keywords = ["ai", "agents", "audit", "governance", "sqlite", "tamper-evident", "mcp", "on-prem"]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Security",
+  "Topic :: System :: Logging",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+agent-ledger = "agent_ledger.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agent_ledger"]
