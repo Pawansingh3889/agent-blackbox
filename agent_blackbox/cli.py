@@ -1,12 +1,12 @@
-"""Command line interface for agent-ledger.
+"""Command line interface for agent-blackbox.
 
-    agent-ledger verify   [--db PATH]
-    agent-ledger tail     [--db PATH] [-n N]
-    agent-ledger stats    [--db PATH]
-    agent-ledger export   [--db PATH] [--format jsonl|csv]
-    agent-ledger record   [--db PATH] --actor A --action B [--target T] [--payload P]
+    agent-blackbox verify   [--db PATH]
+    agent-blackbox tail     [--db PATH] [-n N]
+    agent-blackbox stats    [--db PATH]
+    agent-blackbox export   [--db PATH] [--format jsonl|csv]
+    agent-blackbox record   [--db PATH] --actor A --action B [--target T] [--payload P]
 
-The key (for HMAC chaining) is read from AGENT_LEDGER_KEY when set.
+The key (for HMAC chaining) is read from AGENT_BLACKBOX_KEY when set.
 """
 
 from __future__ import annotations
@@ -20,11 +20,11 @@ from .ledger import Ledger
 
 
 def _add_db(p: argparse.ArgumentParser) -> None:
-    p.add_argument("--db", default="agent_ledger.db", help="path to the ledger file")
+    p.add_argument("--db", default="agent_blackbox.db", help="path to the ledger file")
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="agent-ledger", description=__doc__)
+    parser = argparse.ArgumentParser(prog="agent-blackbox", description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_verify = sub.add_parser("verify", help="check the chain is intact")

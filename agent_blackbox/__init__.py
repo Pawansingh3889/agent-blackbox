@@ -1,4 +1,4 @@
-"""agent-ledger: an append-only, tamper-evident audit log for AI agent actions."""
+"""agent-blackbox: an append-only, tamper-evident audit log for AI agent actions."""
 
 from .ledger import Entry, Ledger, VerifyResult
 

@@ -6,7 +6,7 @@ a chain: change or drop any row after the fact and the chain no longer adds up.
 `verify()` walks the chain and tells you the first row that doesn't.
 
 Storage is a single SQLite file. No services, no network, nothing leaves the
-machine. If AGENT_LEDGER_KEY is set (or a key is passed in), rows are chained
+machine. If AGENT_BLACKBOX_KEY is set (or a key is passed in), rows are chained
 with HMAC-SHA256 instead of plain SHA-256, so someone who can write to the file
 still can't forge a valid chain without the key.
 """
@@ -88,10 +88,10 @@ _CORE = ("seq", "ts", "actor", "action", "target", "payload", "meta", "prev_hash
 
 
 class Ledger:
-    def __init__(self, path: str = "agent_ledger.db", key: Optional[Any] = None) -> None:
+    def __init__(self, path: str = "agent_blackbox.db", key: Optional[Any] = None) -> None:
         self.path = str(path)
         if key is None:
-            env = os.environ.get("AGENT_LEDGER_KEY")
+            env = os.environ.get("AGENT_BLACKBOX_KEY")
             key = env if env else None
         if isinstance(key, str):
             key = key.encode("utf-8")

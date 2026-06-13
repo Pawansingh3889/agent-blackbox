@@ -23,5 +23,5 @@ jobs:
         run: python -m pytest -q
       - name: Self-check (the tool verifies itself)
         run: |
-          python -c "from agent_ledger import Ledger; l=Ledger('ci.db'); [l.record('ci','tool_call',payload={'i':i}) for i in range(50)]"
-          python -m agent_ledger.cli verify --db ci.db
+          python -c "from agent_blackbox import Ledger; l=Ledger('ci.db'); [l.record('ci','tool_call',payload={'i':i}) for i in range(50)]"
+          python -m agent_blackbox.cli verify --db ci.db

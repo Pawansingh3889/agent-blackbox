@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "agent-ledger"
+name = "agent-blackbox"
 version = "0.1.0"
 description = "Append-only, tamper-evident audit log for AI agent actions. On-prem, zero dependencies."
 readme = "README.md"
@@ -23,7 +23,7 @@ dependencies = []
 dev = ["pytest"]
 
 [project.scripts]
-agent-ledger = "agent_ledger.cli:main"
+agent-blackbox = "agent_blackbox.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["agent_ledger"]
+packages = ["agent_blackbox"]

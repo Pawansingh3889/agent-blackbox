@@ -1,4 +1,4 @@
-# agent-ledger
+# agent-blackbox
 
 An append-only, tamper-evident log of everything an AI agent does to your data. Runs on your own machine, stores to a single SQLite file, no dependencies, nothing leaves the network.
 
@@ -8,12 +8,12 @@ Most AI guardrail tools decide whether an action is allowed and then forget abou
 
 Every action is one row. Each row stores the hash of the row before it, so the log is a chain. Change a row, delete a row, or reorder rows after the fact and the chain stops adding up. `verify()` walks it and points at the first row that doesn't check out.
 
-Set `AGENT_LEDGER_KEY` and rows are chained with HMAC-SHA256 instead of plain SHA-256. Then someone who can write to the file still can't forge a valid chain without the key.
+Set `AGENT_BLACKBOX_KEY` and rows are chained with HMAC-SHA256 instead of plain SHA-256. Then someone who can write to the file still can't forge a valid chain without the key.
 
 ## Install
 
 ```bash
-pip install agent-ledger      # once published
+pip install agent-blackbox      # once published
 # or, from a clone:
 pip install -e .
 ```
@@ -21,9 +21,9 @@ pip install -e .
 ## Use it in code
 
 ```python
-from agent_ledger import Ledger
+from agent_blackbox import Ledger
 
-led = Ledger("agent_ledger.db")
+led = Ledger("agent_blackbox.db")
 
 led.record(
     actor="floormind",
@@ -48,10 +48,10 @@ print(result.ok, result.verified)   # True 1
 ## Command line
 
 ```bash
-agent-ledger verify             # check the chain is intact
-agent-ledger tail -n 20         # recent actions
-agent-ledger stats              # counts by action and actor
-agent-ledger export --format csv > audit.csv
+agent-blackbox verify             # check the chain is intact
+agent-blackbox tail -n 20         # recent actions
+agent-blackbox stats              # counts by action and actor
+agent-blackbox export --format csv > audit.csv
 ```
 
 `verify` exits non-zero if the chain is broken, so it drops into CI or a cron check.

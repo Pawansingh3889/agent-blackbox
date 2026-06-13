@@ -2,8 +2,8 @@ import sqlite3
 
 import pytest
 
-from agent_ledger import Ledger
-from agent_ledger.ledger import GENESIS
+from agent_blackbox import Ledger
+from agent_blackbox.ledger import GENESIS
 
 
 def test_record_chains_entries(tmp_path):
