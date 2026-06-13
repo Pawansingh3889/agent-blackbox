@@ -1,7 +1,11 @@
 import sqlite3
-
 import pytest
+import io
+import json
+from contextlib import redirect_stdout
+from unittest.mock import patch
 
+from agent_blackbox import cli
 from agent_blackbox import Ledger
 from agent_blackbox.ledger import GENESIS
 
@@ -104,3 +108,82 @@ def test_payload_dict_is_stored_deterministically(tmp_path):
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
+
+def test_cli_verify_json_success(tmp_path):
+    db = tmp_path / "a.db"
+    led = Ledger(db)
+    led.record("floormind", "sql_query", target="warehouse.orders")
+    led.record("model:gemma", action="tool_call", target="weather_api")
+    led.close()
+
+    # Pass the --json flag to the CLI
+    args = ["verify", "--json"]
+    with patch("agent_blackbox.cli.Ledger", lambda path=None: Ledger(db)):
+        f = io.StringIO()
+        with redirect_stdout(f):
+            try:
+                cli.main(args)
+            except SystemExit as e:
+                assert e.code == 0
+
+        output = f.getvalue().strip()
+        data = json.loads(output)
+        
+        assert data["status"] == "OK"
+        assert data["verified_entries"] == 2
+        assert "broken_seq" not in data
+
+
+def test_cli_verify_json_tampered(tmp_path):
+    db = tmp_path / "a.db"
+    led = Ledger(db)
+    led.record("floormind", "sql_query", target="warehouse.orders")
+    led.close()
+
+    # Intentionally alter the row in the db to break verification
+    raw = sqlite3.connect(db)
+    raw.execute("UPDATE entries SET action = 'malicious_injection' WHERE seq = 1")
+    raw.commit()
+    raw.close()
+
+    args = ["verify", "--json"]
+    with patch("agent_blackbox.cli.Ledger", lambda path=None: Ledger(db)):
+        f = io.StringIO()
+        with redirect_stdout(f):
+            try:
+                cli.main(args)
+            except SystemExit as e:
+                assert e.code == 1
+
+        output = f.getvalue().strip()
+        data = json.loads(output)
+        
+        assert data["status"] == "FAIL"
+        assert data["verified_entries"] == 0
+        assert data["broken_seq"] == 1
+
+
+def test_cli_stats_json(tmp_path):
+    db = tmp_path / "a.db"
+    led = Ledger(db)
+    led.record("floormind", "sql_query", target="warehouse.orders")
+    led.record("model:gemma", "tool_call", target="weather_api")
+    led.close()
+
+    args = ["stats", "--json"]
+    with patch("agent_blackbox.cli.Ledger", lambda path=None: Ledger(db)):
+        f = io.StringIO()
+        with redirect_stdout(f):
+            try:
+                cli.main(args)
+            except SystemExit as e:
+                assert e.code == 0
+
+        output = f.getvalue().strip()
+        data = json.loads(output)
+        
+        assert data["entries_count"] == 2
+        assert "start" in data["range"]
+        assert "end" in data["range"]
+        assert data["by_action"]["sql_query"] == 1
+        assert data["by_actor"]["floormind"] == 1

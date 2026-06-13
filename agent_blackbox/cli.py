@@ -28,6 +28,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_verify = sub.add_parser("verify", help="check the chain is intact")
+    p_verify.add_argument('--json', action='store_true', help='Emit machine-readable JSON output')
     _add_db(p_verify)
 
     p_tail = sub.add_parser("tail", help="show the most recent entries")
@@ -35,7 +36,8 @@ def main(argv: list[str] | None = None) -> int:
     p_tail.add_argument("-n", type=int, default=10, help="how many entries")
 
     p_stats = sub.add_parser("stats", help="summary counts")
-    _add_db(p_stats)
+    p_stats.add_argument('--json', action='store_true', help='Emit machine-readable JSON output')
+    _add_db(p_stats) # or whatever helper it calls
 
     p_export = sub.add_parser("export", help="dump the whole ledger")
     _add_db(p_export)
@@ -53,6 +55,19 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "verify":
         res = led.verify()
+
+        if args.json:
+            verify_output = {
+                "status": "OK" if res.ok else "FAIL",
+                "verified_entries": res.verified
+            }
+            if not res.ok:
+                verify_output["broken_seq"] = res.broken_seq
+                verify_output["detail"] = res.detail
+                
+            print(json.dumps(verify_output))
+            return 0 if res.ok else 1
+            
         if res.ok:
             print(f"OK  {res.verified} entries, chain intact")
             return 0
@@ -66,18 +81,33 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.cmd == "stats":
-        rows = list(led.entries())
-        by_action: dict[str, int] = {}
-        by_actor: dict[str, int] = {}
-        for e in rows:
-            by_action[e.action] = by_action.get(e.action, 0) + 1
-            by_actor[e.actor] = by_actor.get(e.actor, 0) + 1
-        print(f"entries: {len(rows)}")
-        if rows:
-            print(f"range:   {rows[0].ts}  ->  {rows[-1].ts}")
-        print("by action: " + ", ".join(f"{k}={v}" for k, v in sorted(by_action.items())))
-        print("by actor:  " + ", ".join(f"{k}={v}" for k, v in sorted(by_actor.items())))
-        return 0
+            rows = list(led.entries())
+            by_action: dict[str, int] = {}
+            by_actor: dict[str, int] = {}
+            for e in rows:
+                by_action[e.action] = by_action.get(e.action, 0) + 1
+                by_actor[e.actor] = by_actor.get(e.actor, 0) + 1
+                
+            if args.json:
+                stats_output = {
+                    "entries_count": len(rows),
+                    "range": {
+                        "start": rows[0].ts if rows else None,
+                        "end": rows[-1].ts if rows else None
+                    },
+                    "by_action": dict(sorted(by_action.items())),
+                    "by_actor": dict(sorted(by_actor.items()))
+                }
+                print(json.dumps(stats_output))
+                return 0
+                
+            # Default human-readable text output
+            print(f"entries: {len(rows)}")
+            if rows:
+                print(f"range:   {rows[0].ts}  ->  {rows[-1].ts}")
+            print("by action: " + ", ".join(f"{k}={v}" for k, v in sorted(by_action.items())))
+            print("by actor:  " + ", ".join(f"{k}={v}" for k, v in sorted(by_actor.items())))
+            return 0
 
     if args.cmd == "export":
         rows = led.entries()
