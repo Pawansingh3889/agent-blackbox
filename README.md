@@ -53,8 +53,10 @@ print(result.ok, result.verified)   # True 1
 
 ```bash
 agent-blackbox verify             # check the chain is intact
+agent-blackbox verify --json      # machine-readable verification result
 agent-blackbox tail -n 20         # recent actions
 agent-blackbox stats              # counts by action and actor
+agent-blackbox stats --json       # machine-readable summary counts
 agent-blackbox export --format csv > audit.csv
 ```
 
