@@ -102,5 +102,53 @@ def test_payload_dict_is_stored_deterministically(tmp_path):
     assert led.verify().ok
 
 
+def test_record_outcome_stored_and_verifies(tmp_path):
+    led = Ledger(tmp_path / "a.db")
+    e = led.record("floormind", "sql_query", payload="SELECT 1", outcome="correct")
+    assert e.outcome == "correct"
+    assert led.verify().ok
+    assert list(led.entries())[0].outcome == "correct"
+
+
+def test_mixed_outcome_entries_verify_and_summarise(tmp_path):
+    led = Ledger(tmp_path / "a.db")
+    led.record("a", "sql_query", payload="SELECT 1")                        # no outcome
+    led.record("a", "sql_query", payload="SELECT 2", outcome="correct")
+    led.record("a", "sql_query", payload="SELECT 3", outcome="incorrect")
+    led.record("a", "sql_query", payload="SELECT 4", outcome="correct")
+    assert led.verify().ok
+    assert led.outcome_summary() == {"correct": 2, "incorrect": 1}
+
+
+def test_outcome_is_tamper_evident(tmp_path):
+    db = tmp_path / "a.db"
+    led = Ledger(db)
+    led.record("agent", "sql_query", outcome="correct")
+    led.close()
+    raw = sqlite3.connect(db)
+    raw.execute("UPDATE entries SET outcome = 'incorrect' WHERE seq = 1")
+    raw.commit()
+    raw.close()
+    res = Ledger(db).verify()
+    assert not res.ok
+    assert res.broken_seq == 1
+
+
+def test_migration_adds_outcome_to_old_ledger(tmp_path):
+    db = tmp_path / "old.db"
+    raw = sqlite3.connect(db)
+    raw.execute(
+        "CREATE TABLE entries (seq INTEGER PRIMARY KEY, ts TEXT, actor TEXT, "
+        "action TEXT, target TEXT, payload TEXT, meta TEXT, prev_hash TEXT, hash TEXT)"
+    )
+    raw.commit()
+    raw.close()
+    led = Ledger(db)  # opening an old ledger should add the missing column
+    cols = {r["name"] for r in led._conn.execute("PRAGMA table_info(entries)")}
+    assert "outcome" in cols
+    led.record("a", "tool_call", outcome="ok")
+    assert led.verify().ok
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))

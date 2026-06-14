@@ -57,6 +57,7 @@ class Entry:
     meta: Optional[str]
     prev_hash: str
     hash: str
+    outcome: Optional[str] = None
 
     def as_dict(self) -> dict:
         return {
@@ -67,6 +68,7 @@ class Entry:
             "target": self.target,
             "payload": self.payload,
             "meta": self.meta,
+            "outcome": self.outcome,
             "prev_hash": self.prev_hash,
             "hash": self.hash,
         }
@@ -112,15 +114,25 @@ class Ledger:
                 target    TEXT,
                 payload   TEXT,
                 meta      TEXT,
+                outcome   TEXT,
                 prev_hash TEXT NOT NULL,
                 hash      TEXT NOT NULL
             )
             """
         )
+        # Older ledgers predate the outcome column; add it so they keep working.
+        have = {r["name"] for r in self._conn.execute("PRAGMA table_info(entries)")}
+        if "outcome" not in have:
+            self._conn.execute("ALTER TABLE entries ADD COLUMN outcome TEXT")
         self._conn.commit()
 
     def _hash_row(self, row: dict) -> str:
-        return _digest(_canonical({k: row[k] for k in _CORE}), self._key)
+        core = {k: row[k] for k in _CORE}
+        # Outcome joins the hash only when present, so ledgers written before
+        # this column existed still verify unchanged.
+        if row.get("outcome") is not None:
+            core["outcome"] = row["outcome"]
+        return _digest(_canonical(core), self._key)
 
     def _last(self) -> Optional[sqlite3.Row]:
         cur = self._conn.execute("SELECT seq, hash FROM entries ORDER BY seq DESC LIMIT 1")
@@ -133,6 +145,7 @@ class Ledger:
         target: Optional[str] = None,
         payload: Any = None,
         meta: Any = None,
+        outcome: Any = None,
     ) -> Entry:
         """Append one action to the ledger and return the new Entry.
 
@@ -141,6 +154,8 @@ class Ledger:
         target  - what it touched, e.g. "warehouse.orders" or a server name
         payload - the actual content (SQL text, args). str or any JSON value.
         meta    - extra context (row count, status, duration_ms, user).
+        outcome - how it went, e.g. "correct", "incorrect", "error", or a score.
+                  Recorded so you can trend quality over time, not just activity.
         """
         last = self._last()
         seq = (last["seq"] + 1) if last else 1
@@ -153,12 +168,13 @@ class Ledger:
             "target": target,
             "payload": _as_text(payload),
             "meta": _as_text(meta),
+            "outcome": _as_text(outcome),
             "prev_hash": prev_hash,
         }
         row_hash = self._hash_row(row)
         self._conn.execute(
-            "INSERT INTO entries (seq, ts, actor, action, target, payload, meta, prev_hash, hash)"
-            " VALUES (:seq, :ts, :actor, :action, :target, :payload, :meta, :prev_hash, :hash)",
+            "INSERT INTO entries (seq, ts, actor, action, target, payload, meta, outcome, prev_hash, hash)"
+            " VALUES (:seq, :ts, :actor, :action, :target, :payload, :meta, :outcome, :prev_hash, :hash)",
             {**row, "hash": row_hash},
         )
         self._conn.commit()
@@ -169,12 +185,12 @@ class Ledger:
         prev = GENESIS
         verified = 0
         cur = self._conn.execute(
-            "SELECT seq, ts, actor, action, target, payload, meta, prev_hash, hash FROM entries ORDER BY seq"
+            "SELECT seq, ts, actor, action, target, payload, meta, outcome, prev_hash, hash FROM entries ORDER BY seq"
         )
         for r in cur:
             if r["prev_hash"] != prev:
                 return VerifyResult(False, verified, r["seq"], "broken link: prev_hash does not match the row before it")
-            expect = self._hash_row({k: r[k] for k in _CORE})
+            expect = self._hash_row({k: r[k] for k in (*_CORE, "outcome")})
             if expect != r["hash"]:
                 return VerifyResult(False, verified, r["seq"], "row altered: stored hash does not match its contents")
             prev = r["hash"]
@@ -213,6 +229,19 @@ class Ledger:
 
     def count(self) -> int:
         return self._conn.execute("SELECT COUNT(*) AS n FROM entries").fetchone()["n"]
+
+    def outcome_summary(self, since: Optional[str] = None, until: Optional[str] = None) -> dict:
+        """Count entries by recorded outcome (entries with no outcome are skipped).
+
+        Pass since/until (ISO timestamps) to look at a window, e.g. the last
+        seven days, which is how you watch quality drift instead of waiting for
+        complaints.
+        """
+        counts: dict = {}
+        for e in self.entries(since=since, until=until):
+            if e.outcome is not None:
+                counts[e.outcome] = counts.get(e.outcome, 0) + 1
+        return dict(sorted(counts.items()))
 
     def close(self) -> None:
         self._conn.close()

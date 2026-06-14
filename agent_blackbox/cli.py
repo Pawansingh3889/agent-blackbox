@@ -74,9 +74,12 @@ def main(argv: list[str] | None = None) -> int:
         rows = list(led.entries())
         by_action: dict[str, int] = {}
         by_actor: dict[str, int] = {}
+        by_outcome: dict[str, int] = {}
         for e in rows:
             by_action[e.action] = by_action.get(e.action, 0) + 1
             by_actor[e.actor] = by_actor.get(e.actor, 0) + 1
+            if e.outcome is not None:
+                by_outcome[e.outcome] = by_outcome.get(e.outcome, 0) + 1
         if args.json:
             payload = {
                 "entries": len(rows),
@@ -86,6 +89,7 @@ def main(argv: list[str] | None = None) -> int:
                 },
                 "by_action": dict(sorted(by_action.items())),
                 "by_actor": dict(sorted(by_actor.items())),
+                "by_outcome": dict(sorted(by_outcome.items())),
             }
             print(json.dumps(payload, ensure_ascii=False))
             return 0
@@ -94,6 +98,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"range:   {rows[0].ts}  ->  {rows[-1].ts}")
         print("by action: " + ", ".join(f"{k}={v}" for k, v in sorted(by_action.items())))
         print("by actor:  " + ", ".join(f"{k}={v}" for k, v in sorted(by_actor.items())))
+        if by_outcome:
+            print("by outcome: " + ", ".join(f"{k}={v}" for k, v in sorted(by_outcome.items())))
         return 0
 
     if args.cmd == "export":

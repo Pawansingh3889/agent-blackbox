@@ -35,6 +35,7 @@ led.record(
     target="warehouse.orders",
     payload="SELECT TOP 100 * FROM orders WHERE region = 'NE'",
     meta={"rows": 100, "status": "ok", "duration_ms": 42},
+    outcome="correct",   # how it went: "correct" / "incorrect" / "error" or a score
 )
 
 result = led.verify()
@@ -48,6 +49,7 @@ print(result.ok, result.verified)   # True 1
 - `target` — what it touched, e.g. a table or server name
 - `payload` — the actual content (SQL text, tool args); a string or any JSON value
 - `meta` — extra context (row count, status, duration, user)
+- `outcome` — how it went (`"correct"`, `"incorrect"`, `"error"`, or a score). Optional, tamper-evident like the rest, and surfaced by `stats` so you can trend quality over time, not just activity
 
 ## Command line
 
@@ -55,7 +57,7 @@ print(result.ok, result.verified)   # True 1
 agent-blackbox verify             # check the chain is intact
 agent-blackbox verify --json      # machine-readable verification result
 agent-blackbox tail -n 20         # recent actions
-agent-blackbox stats              # counts by action and actor
+agent-blackbox stats              # counts by action, actor and outcome
 agent-blackbox stats --json       # machine-readable summary counts
 agent-blackbox export --format csv > audit.csv
 ```
