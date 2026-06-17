@@ -15,12 +15,24 @@ import argparse
 import csv
 import json
 import sys
+from typing import Iterator
 
-from .ledger import Ledger
+from .ledger import Entry, Ledger
 
 
 def _add_db(p: argparse.ArgumentParser) -> None:
     p.add_argument("--db", default="agent_blackbox.db", help="path to the ledger file")
+
+
+def _add_entry_filters(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--actor", default=None, help="only include entries from this actor")
+    p.add_argument("--action", default=None, help="only include entries with this action")
+    p.add_argument("--since", default=None, help="only include entries at or after this ISO timestamp")
+    p.add_argument("--until", default=None, help="only include entries at or before this ISO timestamp")
+
+
+def _filtered_entries(led: Ledger, args: argparse.Namespace) -> Iterator[Entry]:
+    return led.entries(actor=args.actor, action=args.action, since=args.since, until=args.until)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -33,6 +45,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_tail = sub.add_parser("tail", help="show the most recent entries")
     _add_db(p_tail)
+    _add_entry_filters(p_tail)
     p_tail.add_argument("-n", type=int, default=10, help="how many entries")
 
     p_stats = sub.add_parser("stats", help="summary counts")
@@ -41,6 +54,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_export = sub.add_parser("export", help="dump the whole ledger")
     _add_db(p_export)
+    _add_entry_filters(p_export)
     p_export.add_argument("--format", choices=("jsonl", "csv"), default="jsonl")
 
     p_rec = sub.add_parser("record", help="append one entry (handy for shell hooks)")
@@ -65,7 +79,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if args.cmd == "tail":
-        rows = list(led.entries())[-args.n :]
+        rows = list(_filtered_entries(led, args))[-args.n :]
         for e in rows:
             print(f"[{e.seq}] {e.ts} {e.actor} {e.action} {e.target or ''}".rstrip())
         return 0
@@ -103,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.cmd == "export":
-        rows = led.entries()
+        rows = _filtered_entries(led, args)
         if args.format == "jsonl":
             for e in rows:
                 print(json.dumps(e.as_dict(), ensure_ascii=False))
