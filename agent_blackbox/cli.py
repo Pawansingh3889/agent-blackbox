@@ -63,9 +63,10 @@ def main(argv: list[str] | None = None) -> int:
     p_rec.add_argument("--action", required=True)
     p_rec.add_argument("--target", default=None)
     p_rec.add_argument("--payload", default=None)
+    p_rec.add_argument("--hash-payload", action="store_true", help="store SHA-256 of payload instead of clear text")
 
     args = parser.parse_args(argv)
-    led = Ledger(args.db)
+    led = Ledger(args.db, hash_payload=getattr(args, "hash_payload", False))
 
     if args.cmd == "verify":
         res = led.verify()
