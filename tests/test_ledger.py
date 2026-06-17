@@ -150,5 +150,42 @@ def test_migration_adds_outcome_to_old_ledger(tmp_path):
     assert led.verify().ok
 
 
+def test_hash_payload_stores_sha256_instead_of_clear_text(tmp_path):
+    led = Ledger(tmp_path / "a.db", hash_payload=True)
+    e = led.record("agent", "sql_query", payload="SELECT 1")
+    import hashlib
+    expected = hashlib.sha256("SELECT 1".encode("utf-8")).hexdigest()
+    assert e.payload == expected
+    assert led.verify().ok
+
+
+def test_hash_payload_prove_matches_original(tmp_path):
+    led = Ledger(tmp_path / "a.db", hash_payload=True)
+    led.record("agent", "sql_query", payload="SELECT 1")
+    assert led.prove(1, "SELECT 1")
+    assert not led.prove(1, "SELECT 2")
+    assert not led.prove(2, "SELECT 1")
+
+
+def test_hash_payload_with_dict_payload(tmp_path):
+    led = Ledger(tmp_path / "a.db", hash_payload=True)
+    payload = {"b": 2, "a": 1}
+    e = led.record("agent", "tool_call", payload=payload)
+    import hashlib
+    expected = hashlib.sha256('{"a":1,"b":2}'.encode("utf-8")).hexdigest()
+    assert e.payload == expected
+    assert led.prove(1, payload)
+    assert led.verify().ok
+
+
+def test_hash_payload_none_is_stored_as_none(tmp_path):
+    led = Ledger(tmp_path / "a.db", hash_payload=True)
+    e = led.record("agent", "sql_query", payload=None)
+    assert e.payload is None
+    assert led.prove(1, None)
+    assert not led.prove(1, "anything")
+    assert led.verify().ok
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))

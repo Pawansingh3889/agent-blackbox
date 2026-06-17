@@ -51,6 +51,17 @@ print(result.ok, result.verified)   # True 1
 - `meta` — extra context (row count, status, duration, user)
 - `outcome` — how it went (`"correct"`, `"incorrect"`, `"error"`, or a score). Optional, tamper-evident like the rest, and surfaced by `stats` so you can trend quality over time, not just activity
 
+### Sensitive payloads
+
+If you do not want raw payloads stored on disk, open the ledger with `hash_payload=True`:
+
+```python
+led = Ledger("agent_blackbox.db", hash_payload=True)
+led.record(actor="agent", action="sql_query", payload="SELECT * FROM payroll")
+```
+
+The payload column now holds `SHA-256(payload)` instead of the clear text. The chain still verifies the same way — tamper-evidence is preserved — and you can later prove a given payload matches the stored hash with `led.prove(seq, payload)`. Trade-off: you lose human readability in the database and exports, and you can no longer search or filter by payload content.
+
 ## Command line
 
 ```bash
@@ -60,6 +71,7 @@ agent-blackbox tail -n 20         # recent actions
 agent-blackbox stats              # counts by action, actor and outcome
 agent-blackbox stats --json       # machine-readable summary counts
 agent-blackbox export --format csv > audit.csv
+agent-blackbox record --actor sql-agent --action query --target orders --payload "SELECT 1" --hash-payload
 ```
 
 `verify` exits non-zero if the chain is broken, so it drops into CI or a cron check.

@@ -90,7 +90,12 @@ _CORE = ("seq", "ts", "actor", "action", "target", "payload", "meta", "prev_hash
 
 
 class Ledger:
-    def __init__(self, path: str = "agent_blackbox.db", key: Optional[Any] = None) -> None:
+    def __init__(
+        self,
+        path: str = "agent_blackbox.db",
+        key: Optional[Any] = None,
+        hash_payload: bool = False,
+    ) -> None:
         self.path = str(path)
         if key is None:
             env = os.environ.get("AGENT_BLACKBOX_KEY")
@@ -98,6 +103,7 @@ class Ledger:
         if isinstance(key, str):
             key = key.encode("utf-8")
         self._key: Optional[bytes] = key
+        self._hash_payload = bool(hash_payload)
         self._conn = sqlite3.connect(self.path)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
@@ -134,6 +140,29 @@ class Ledger:
             core["outcome"] = row["outcome"]
         return _digest(_canonical(core), self._key)
 
+    def _hash_payload_value(self, payload_text: Optional[str]) -> Optional[str]:
+        if payload_text is None:
+            return None
+        return hashlib.sha256(payload_text.encode("utf-8")).hexdigest()
+
+    def prove(self, seq: int, payload: Any) -> bool:
+        """Return True if the supplied payload matches the stored hash for seq.
+
+        Only useful when the ledger was opened with hash_payload=True. When
+        payload is stored in the clear this is a plain string comparison.
+        """
+        cur = self._conn.execute("SELECT payload FROM entries WHERE seq = ?", (seq,))
+        row = cur.fetchone()
+        if row is None:
+            return False
+        stored = row["payload"]
+        text = _as_text(payload)
+        if stored is None:
+            return text is None
+        if self._hash_payload:
+            return stored == self._hash_payload_value(text)
+        return stored == text
+
     def _last(self) -> Optional[sqlite3.Row]:
         cur = self._conn.execute("SELECT seq, hash FROM entries ORDER BY seq DESC LIMIT 1")
         return cur.fetchone()
@@ -160,13 +189,16 @@ class Ledger:
         last = self._last()
         seq = (last["seq"] + 1) if last else 1
         prev_hash = last["hash"] if last else GENESIS
+        payload_text = _as_text(payload)
+        if self._hash_payload:
+            payload_text = self._hash_payload_value(payload_text)
         row = {
             "seq": seq,
             "ts": _utcnow(),
             "actor": actor,
             "action": action,
             "target": target,
-            "payload": _as_text(payload),
+            "payload": payload_text,
             "meta": _as_text(meta),
             "outcome": _as_text(outcome),
             "prev_hash": prev_hash,
