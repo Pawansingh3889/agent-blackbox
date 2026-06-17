@@ -44,12 +44,12 @@ print(result.ok, result.verified)   # True 1
 
 `record()` takes:
 
-- `actor` — who acted, e.g. `"floormind"` or `"model:gemma3:12b"`
-- `action` — what they did, e.g. `"sql_query"`, `"tool_call"`, `"file_read"`
-- `target` — what it touched, e.g. a table or server name
-- `payload` — the actual content (SQL text, tool args); a string or any JSON value
-- `meta` — extra context (row count, status, duration, user)
-- `outcome` — how it went (`"correct"`, `"incorrect"`, `"error"`, or a score). Optional, covered by the same tamper-evidence as the rest, and shown by `stats` so you can track quality over time.
+- `actor`: who acted, e.g. `"floormind"` or `"model:gemma3:12b"`
+- `action`: what they did, e.g. `"sql_query"`, `"tool_call"`, `"file_read"`
+- `target`: what it touched, e.g. a table or server name
+- `payload`: the actual content (SQL text, tool args); a string or any JSON value
+- `meta`: extra context (row count, status, duration, user)
+- `outcome`: how it went (`"correct"`, `"incorrect"`, `"error"`, or a score). Optional, covered by the same tamper-evidence as the rest, and shown by `stats` so you can track quality over time.
 
 ### Sensitive payloads
 
@@ -60,7 +60,7 @@ led = Ledger("agent_blackbox.db", hash_payload=True)
 led.record(actor="agent", action="sql_query", payload="SELECT * FROM payroll")
 ```
 
-The payload column now holds `SHA-256(payload)` instead of the clear text. The chain still verifies the same way — tamper-evidence is preserved — and you can later prove a given payload matches the stored hash with `led.prove(seq, payload)`. Trade-off: you lose human readability in the database and exports, and you can no longer search or filter by payload content.
+The payload column now holds `SHA-256(payload)` instead of the clear text. The chain still verifies the same way (tamper-evidence is preserved), and you can later prove a given payload matches the stored hash with `led.prove(seq, payload)`. Trade-off: you lose human readability in the database and exports, and you can no longer search or filter by payload content.
 
 ## Command line
 
