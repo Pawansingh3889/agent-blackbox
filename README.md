@@ -4,6 +4,8 @@
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
+> Part of the [Governed Agent Stack](https://github.com/Pawansingh3889/governed-agent-stack): free, on-prem building blocks for an AI agent you can point at a real database and audit.
+
 An append-only, tamper-evident log of everything an AI agent does to your data. Runs on your own machine, stores to a single SQLite file, no dependencies, nothing leaves the network.
 
 Most AI guardrail tools decide whether an action is allowed and then forget about it. The question that comes up later, in an incident review or an audit, is different: *what did the agent actually do, and can you prove the record wasn't edited afterwards?* That's what this is for.
