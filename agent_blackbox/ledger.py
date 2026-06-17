@@ -184,7 +184,7 @@ class Ledger:
         payload - the actual content (SQL text, args). str or any JSON value.
         meta    - extra context (row count, status, duration_ms, user).
         outcome - how it went, e.g. "correct", "incorrect", "error", or a score.
-                  Recorded so you can trend quality over time, not just activity.
+                  Recorded so you can track how accuracy holds up over time.
         """
         last = self._last()
         seq = (last["seq"] + 1) if last else 1
@@ -266,8 +266,7 @@ class Ledger:
         """Count entries by recorded outcome (entries with no outcome are skipped).
 
         Pass since/until (ISO timestamps) to look at a window, e.g. the last
-        seven days, which is how you watch quality drift instead of waiting for
-        complaints.
+        seven days, to spot quality drift early.
         """
         counts: dict = {}
         for e in self.entries(since=since, until=until):

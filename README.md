@@ -49,7 +49,7 @@ print(result.ok, result.verified)   # True 1
 - `target` — what it touched, e.g. a table or server name
 - `payload` — the actual content (SQL text, tool args); a string or any JSON value
 - `meta` — extra context (row count, status, duration, user)
-- `outcome` — how it went (`"correct"`, `"incorrect"`, `"error"`, or a score). Optional, tamper-evident like the rest, and surfaced by `stats` so you can trend quality over time, not just activity
+- `outcome` — how it went (`"correct"`, `"incorrect"`, `"error"`, or a score). Optional, covered by the same tamper-evidence as the rest, and shown by `stats` so you can track quality over time.
 
 ### Sensitive payloads
 
